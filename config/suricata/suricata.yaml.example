@@ -1,0 +1,23 @@
+# Minimal Suricata configuration excerpt for the authorized lab IDS dashboard.
+# This is an example snippet, not a full production-ready Suricata configuration.
+
+outputs:
+  - eve-log:
+      enabled: yes
+      filetype: regular
+      filename: eve.json
+      types:
+        - alert
+        - dns
+        - http
+        - tls
+
+default-rule-path: ./rules
+rule-files:
+  - suricata.rules
+  - local.rules
+
+# Place the safe demo rules from `config/suricata/local.rules` into your lab's
+# configured rule directory and ensure Suricata writes `eve.json` alerts for
+# the dashboard ingestion pipeline.
+

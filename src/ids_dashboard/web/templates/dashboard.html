@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ page_title }}</title>
+    {% if auto_refresh_enabled %}
+    <meta http-equiv="refresh" content="{{ auto_refresh_seconds }}" />
+    {% endif %}
+    <link rel="stylesheet" href="{{ url_for('static', path='app.css') }}" />
+  </head>
+  <body>
+    <main class="layout">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Authorized Lab Only</p>
+          <h1>{{ page_title }}</h1>
+          <p class="lede">
+            Read-only defensive IDS visibility for Suricata alert telemetry in an
+            authorized lab environment.
+          </p>
+          {% if auto_refresh_enabled %}
+          <p class="auto-refresh-note">
+            Auto-refresh is enabled every {{ auto_refresh_seconds }} seconds while
+            live local ingestion is turned on.
+          </p>
+          {% endif %}
+        </div>
+        <div class="meta-card">
+          <p class="meta-label">Last render</p>
+          <p class="meta-value">{{ generated_at }}</p>
+          <p class="meta-note">
+            Offensive simulation, unauthorized monitoring, and real-world attack
+            workflows are intentionally out of scope.
+          </p>
+        </div>
+      </section>
+
+      <section class="warning-banner">
+        This project is defensive, educational, and intended only for systems and
+        networks you are explicitly authorized to monitor in a lab.
+      </section>
+
+      <section class="stats-grid stats-grid-wide">
+        <article class="stat-card">
+          <p class="stat-label">Total Alerts</p>
+          <p class="stat-value">{{ summary.total_alerts }}</p>
+        </article>
+        <article class="stat-card">
+          <p class="stat-label">Latest Alert</p>
+          <p class="stat-value stat-value-small">
+            {{ summary.latest_timestamp or "No alerts ingested yet" }}
+          </p>
+        </article>
+        <article class="stat-card">
+          <p class="stat-label">Last Inserted</p>
+          <p class="stat-value">{{ ingestion_status.last_inserted_alerts }}</p>
+        </article>
+        <article class="stat-card">
+          <p class="stat-label">Last Duplicates</p>
+          <p class="stat-value">{{ ingestion_status.last_duplicate_alerts }}</p>
+        </article>
+      </section>
+
+      {% if not has_alerts %}
+      <section class="empty-state">
+        <h2>No alerts loaded yet</h2>
+        <p>
+          Initialize the database, ingest the bundled sample alerts, then refresh
+          this page.
+        </p>
+        <pre>python manage.py init-db
+python manage.py ingest-sample
+uvicorn app:app --reload</pre>
+      </section>
+      {% endif %}
+
+      <section class="panel-grid panel-grid-wide">
+        <article class="panel">
+          <div class="panel-header">
+            <h2>Severity Summary</h2>
+            <span>Higher priority Suricata alerts trend toward severity 1.</span>
+          </div>
+          {% if summary.alerts_by_severity %}
+          <ul class="metric-list">
+            {% for item in summary.alerts_by_severity %}
+            <li>
+              <span class="severity-pill severity-{{ item.severity }}">Severity {{ item.severity }}</span>
+              <strong>{{ item.count }}</strong>
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p class="muted">No severity data available yet.</p>
+          {% endif %}
+        </article>
+
+        <article class="panel">
+          <div class="panel-header">
+            <h2>Top Signatures</h2>
+            <span>Most frequent detections in the local alert store.</span>
+          </div>
+          {% if summary.top_signatures %}
+          <ul class="signature-list">
+            {% for item in summary.top_signatures %}
+            <li>
+              <div>
+                <p class="list-title">{{ item.signature }}</p>
+                <p class="list-subtitle">SID {{ item.signature_id }}</p>
+              </div>
+              <strong>{{ item.count }}</strong>
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p class="muted">No signature counts available yet.</p>
+          {% endif %}
+        </article>
+
+        <article class="panel">
+          <div class="panel-header">
+            <h2>Source / Destination Summary</h2>
+            <span>Top observed source and destination pairs.</span>
+          </div>
+          {% if summary.top_flows %}
+          <ul class="signature-list">
+            {% for item in summary.top_flows %}
+            <li>
+              <div>
+                <p class="list-title">{{ item.src_ip }} → {{ item.dest_ip }}</p>
+                <p class="list-subtitle">Top recurring path</p>
+              </div>
+              <strong>{{ item.count }}</strong>
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p class="muted">No flow summary available yet.</p>
+          {% endif %}
+        </article>
+
+        <article class="panel">
+          <div class="panel-header">
+            <h2>Live Ingestion Status</h2>
+            <span>Authorized local log watching only.</span>
+          </div>
+          <div class="status-grid">
+            <div class="status-row">
+              <span class="muted">Watcher</span>
+              <span class="status-badge {{ 'status-good' if ingestion_status.watcher_running else 'status-neutral' }}">
+                {{ "Running" if ingestion_status.watcher_running else ("Enabled" if ingestion_status.watcher_enabled else "Disabled") }}
+              </span>
+            </div>
+            <div class="status-row">
+              <span class="muted">Source Path</span>
+              <span class="status-value">{{ ingestion_status.source_path }}</span>
+            </div>
+            <div class="status-row">
+              <span class="muted">Source File</span>
+              <span class="status-badge {{ 'status-good' if ingestion_status.file_exists else 'status-warn' }}">
+                {{ "Present" if ingestion_status.file_exists else "Missing" }}
+              </span>
+            </div>
+            <div class="status-row">
+              <span class="muted">Poll Interval</span>
+              <span class="status-value">{{ ingestion_status.poll_interval_seconds }}s</span>
+            </div>
+            <div class="status-row">
+              <span class="muted">Stored Offset</span>
+              <span class="status-value">{{ ingestion_status.file_offset }} bytes</span>
+            </div>
+            <div class="status-row">
+              <span class="muted">Last Status</span>
+              <span class="status-badge {{ 'status-good' if ingestion_status.last_status == 'success' else ('status-warn' if ingestion_status.last_status in ['completed_with_errors', 'no_new_data'] else 'status-neutral') }}">
+                {{ ingestion_status.last_status }}
+              </span>
+            </div>
+            <div class="status-row">
+              <span class="muted">Last Completed</span>
+              <span class="status-value">{{ ingestion_status.last_run_completed_at or "No run recorded yet" }}</span>
+            </div>
+            <div class="status-row">
+              <span class="muted">Watcher Poll</span>
+              <span class="status-value">{{ ingestion_status.watcher_last_poll_at or "Watcher not polling" }}</span>
+            </div>
+            {% if ingestion_status.watcher_last_error %}
+            <div class="status-row status-row-stack">
+              <span class="muted">Watcher Error</span>
+              <span class="status-error">{{ ingestion_status.watcher_last_error }}</span>
+            </div>
+            {% endif %}
+          </div>
+        </article>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Recent Alert Timeline</h2>
+          <span>Newest normalized alerts first.</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Severity</th>
+                <th>Signature</th>
+                <th>Source</th>
+                <th>Destination</th>
+                <th>Protocol</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% if alerts %}
+                {% for alert in alerts %}
+                <tr>
+                  <td>{{ alert.timestamp }}</td>
+                  <td>
+                    <span class="severity-pill severity-{{ alert.severity }}">
+                      {{ alert.severity }}
+                    </span>
+                  </td>
+                  <td>
+                    <div class="table-title">{{ alert.signature }}</div>
+                    <div class="table-subtitle">{{ alert.category }}</div>
+                  </td>
+                  <td>{{ alert.src_ip }}:{{ alert.src_port }}</td>
+                  <td>{{ alert.dest_ip }}:{{ alert.dest_port }}</td>
+                  <td>{{ alert.protocol }}</td>
+                </tr>
+                {% endfor %}
+              {% else %}
+              <tr>
+                <td colspan="6" class="muted">No alerts available.</td>
+              </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Recent Ingestion Runs</h2>
+          <span>Tracks incremental and full imports for the configured source.</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Mode</th>
+                <th>Status</th>
+                <th>Offsets</th>
+                <th>Inserted</th>
+                <th>Duplicates</th>
+                <th>Completed</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% if ingestion_runs %}
+                {% for run in ingestion_runs %}
+                <tr>
+                  <td>{{ run.mode }}</td>
+                  <td>{{ run.status }}</td>
+                  <td>{{ run.read_offset_start }} → {{ run.read_offset_end }}</td>
+                  <td>{{ run.inserted_alerts }}</td>
+                  <td>{{ run.duplicate_alerts }}</td>
+                  <td>{{ run.completed_at or "n/a" }}</td>
+                </tr>
+                {% endfor %}
+              {% else %}
+              <tr>
+                <td colspan="6" class="muted">No ingestion runs recorded yet.</td>
+              </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

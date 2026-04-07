@@ -1,0 +1,43 @@
+name: Bug report
+description: Report a reproducible bug in the dashboard, ingestion pipeline, or docs.
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use only safe, synthetic, or authorized-lab details. Do not include secrets, private logs, or sensitive network data.
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      placeholder: Brief description of the issue
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include only safe reproduction steps.
+      placeholder: 1. Run ... 2. Open ... 3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: input
+    id: python
+    attributes:
+      label: Python version
+      placeholder: "3.14.3"
+

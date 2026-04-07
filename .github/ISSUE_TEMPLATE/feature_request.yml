@@ -1,0 +1,30 @@
+name: Feature request
+description: Suggest a defensive, authorized-lab improvement to the project.
+title: "[Feature] "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Feature requests must stay within the project's defensive, educational, and authorized-lab scope.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      placeholder: What user or analyst workflow is currently missing?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      placeholder: Describe the safe feature you want to add.
+    validations:
+      required: true
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Constraints or safety considerations
+      placeholder: Defensive-only guardrails, scope boundaries, sample-data expectations, etc.
+
